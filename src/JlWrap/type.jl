@@ -11,6 +11,22 @@ function pyjltype_getitem(self::Type, k_)
     end
 end
 
+function pyjltype_numpy_dtype(self::Type)
+    typestr, descr = pytypestrdescr(self)
+    if isempty(typestr)
+        errset(pybuiltins.AttributeError, "__numpy_dtype__")
+        return PyNULL
+    end
+    np = pyimport("numpy")
+    if pyisnull(descr)
+        return np.dtype(typestr)
+    else
+        return np.dtype(descr)
+    end
+end
+
+pyjl_handle_error_type(::typeof(pyjltype_numpy_dtype), x, exc) = pybuiltins.AttributeError
+
 function init_type()
     jl = pyjuliacallmodule
     pybuiltins.exec(
@@ -25,6 +41,9 @@ class TypeValue(AnyValue):
         raise TypeError("not supported")
     def __delitem__(self, k):
         raise TypeError("not supported")
+    @property
+    def __numpy_dtype__(self):
+        return self._jl_callmethod($(pyjl_methodnum(pyjltype_numpy_dtype)))
 """,
             @__FILE__(),
             "exec",

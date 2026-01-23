@@ -472,12 +472,71 @@ end
     end
 end
 
-@testitem "type" begin
+@testitem "type" setup = [Setup] begin
+    using PythonCall.NumpyDates
     @testset "type" begin
         @test pyis(pytype(pyjl(Int)), PythonCall.pyjltypetype)
     end
     @testset "bool" begin
         @test pytruth(pyjl(Int))
+    end
+    @testset "numpy dtype" begin
+        if Setup.devdeps
+            np = pyimport("numpy")
+
+            # success cases
+            @testset "$t -> $d" for (t, d) in [
+                (Bool, "bool"),
+                (Int8, "int8"),
+                (Int16, "int16"),
+                (Int32, "int32"),
+                (Int64, "int64"),
+                (UInt8, "uint8"),
+                (UInt16, "uint16"),
+                (UInt32, "uint32"),
+                (UInt64, "uint64"),
+                (Float16, "float16"),
+                (Float32, "float32"),
+                (Float64, "float64"),
+                (ComplexF32, "complex64"),
+                (ComplexF64, "complex128"),
+                (InlineDateTime64{SECONDS}, "datetime64[s]"),
+                (InlineDateTime64{(SECONDS, 5)}, "datetime64[5s]"),
+                (InlineDateTime64{NumpyDates.UNBOUND_UNITS}, "datetime64"),
+                (InlineTimeDelta64{MINUTES}, "timedelta64[m]"),
+                (InlineTimeDelta64{(SECONDS, 5)}, "timedelta64[5s]"),
+                (InlineTimeDelta64{NumpyDates.UNBOUND_UNITS}, "timedelta64"),
+                (Tuple{}, pylist()),
+                (Tuple{Int32, Int32}, pylist([("f0", "int32"), ("f1", "int32")])),
+                (@NamedTuple{}, pylist()),
+                (@NamedTuple{x::Int32, y::Int32}, pylist([("x", "int32"), ("y", "int32")])),
+                (Pair{Int32, Int32}, pylist([("first", "int32"), ("second", "int32")])),
+            ]
+                @test pyeq(Bool, pygetattr(pyjl(t), "__numpy_dtype__"), np.dtype(d))
+                @test pyeq(Bool, np.dtype(pyjl(t)), np.dtype(d))
+            end
+
+            # unsupported cases
+            @testset "$t -> AttributeError" for t in [
+                # non-primitives or mutables
+                String,
+                Vector{Int},
+                # pointers
+                Ptr{Cvoid},
+                Ptr{Int},
+                # PyPtr specifically should NOT be interpreted as np.dtype("O")
+                PythonCall.C.PyPtr,
+            ]
+                err = try
+                    pygetattr(pyjl(t), "__numpy_dtype__")
+                    nothing
+                catch err
+                    err
+                end
+                @test err isa PythonCall.PyException
+                @test pyis(err.t, pybuiltins.AttributeError)
+            end
+        end
     end
 end
 
