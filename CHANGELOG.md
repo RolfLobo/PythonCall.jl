@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+* Add configuration via Preferences in addition to environment variables (e.g. `exe`
+  rather than `JULIA_PYTHONCALL_EXE`.)
+
 ## 0.9.32 (2026-05-14)
 * Added `juliacall.TypeValue.__numpy_dtype__` attribute to allow converting Julia types
   to the corresponding NumPy dtype, like `numpy.dtype(jl.Int)`.
